@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set_n_least_used_CUDA_VISIBLE_DEVICES() {
     local n=${1:-"9999"}
     echo "GPU Memory Usage:"
@@ -18,8 +20,12 @@ set_n_least_used_CUDA_VISIBLE_DEVICES 2
 # torchrun --standalone --nproc_per_node=2 train_prompts.py prompts.csv --strategy colossalai_zero2
 
 torchrun --standalone --nproc_per_node=2 train_prompts.py \
-    --pretrain_dataset /path/to/data.json \
-    --prompt_dataset /path/to/data.json \
+    --model opt \
+    --pretrain output/opt-6.7b-sft \
+    --pretrain_dataset /mnt/ColossalAI/applications/Chat/examples/data/instinwild_en.json  \
+    --prompt_dataset samples.csv \
     --strategy colossalai_zero2 \
-    --num_episodes 1 --num_collect_steps 2 --num_update_steps 1 \
-    --train_batch_size 2
+    --num_episodes 5 --num_collect_steps 2 --num_update_steps 1 \
+    --train_batch_size 2 \
+    --save_path output/ppo \
+    --lora_rank 8
