@@ -6,7 +6,8 @@ from coati.models.generation import generate
 from coati.models.gpt import GPTActor
 from coati.models.llama import LlamaActor
 from coati.models.opt import OPTActor
-from transformers import AutoTokenizer, BloomTokenizerFast, GPT2Tokenizer, LlamaTokenizer
+from coati.models.polyglotko import PolyglotKoActor
+from transformers import AutoTokenizer, BloomTokenizerFast, GPT2Tokenizer, LlamaTokenizer, GPTNeoXTokenizerFast
 
 
 def eval(args):
@@ -19,6 +20,8 @@ def eval(args):
         actor = OPTActor(pretrained=args.pretrain)
     elif args.model == "llama":
         actor = LlamaActor(pretrained=args.pretrain)
+    elif args.model =="polyglotko":
+        actor = PolyglotKoActor(pretraind=args.pretrain)
     else:
         raise ValueError(f'Unsupported model "{args.model}"')
 
@@ -41,6 +44,9 @@ def eval(args):
         tokenizer = LlamaTokenizer.from_pretrained("hf-internal-testing/llama-tokenizer")
         tokenizer.eos_token = "<\s>"
         tokenizer.pad_token = tokenizer.unk_token
+    elif args.model == "polyglotko":
+        tokenizer = GPTNeoXTokenizerFast.from_pretrained("EleutherAI/gpt-neox-20b",add_eos_token=True)
+        tokenizer.pad_token = tokenizer.eos_token
     else:
         raise ValueError(f'Unsupported model "{args.model}"')
 
@@ -63,7 +69,7 @@ def eval(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="gpt2", choices=["gpt2", "bloom", "opt", "llama"])
+    parser.add_argument("--model", default="gpt2", choices=["gpt2", "bloom", "opt", "llama", "polyglotko"])
     # We suggest to use the pretrained model from HuggingFace, use pretrain to configure model
     parser.add_argument("--pretrain", type=str, default=None)
     parser.add_argument("--model_path", type=str, default=None)

@@ -1,13 +1,13 @@
 from typing import Optional
 
 import torch.nn as nn
-from transformers.models.opt.configuration_opt import OPTConfig
-from transformers.models.opt.modeling_opt import OPTModel
+from transformers.models.gpt_neox.configuration_gpt_neox import GPTNeoXConfig
+from transformers.models.gpt_neox.modeling_gpt_neox import GPTNeoXModel
 
 from ..base import Critic
 
 
-class OPTCritic(Critic):
+class PolyglotkoCritic(Critic):
     """
     OPT Critic model.
 
@@ -21,17 +21,17 @@ class OPTCritic(Critic):
     def __init__(
         self,
         pretrained: Optional[str] = None,
-        config: Optional[OPTConfig] = None,
+        config: Optional[GPTNeoXConfig] = None,
         lora_rank: int = 0,
         lora_train_bias: str = "none",
         **kwargs,
     ) -> None:
         if pretrained is not None:
-            model = OPTModel.from_pretrained(pretrained)
+            model = GPTNeoXModel.from_pretrained(pretrained)
         elif config is not None:
-            model = OPTModel(config)
+            model = GPTNeoXModel(config)
         else:
-            model = OPTModel(OPTConfig())
+            model = GPTNeoXModel(GPTNeoXConfig())
 
         value_head = nn.Linear(model.config.word_embed_proj_dim, 1)
         super().__init__(model, value_head, lora_rank, lora_train_bias, **kwargs)

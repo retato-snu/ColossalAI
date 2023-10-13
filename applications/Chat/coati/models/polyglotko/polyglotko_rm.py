@@ -1,18 +1,18 @@
 from typing import Optional
 
 import torch.nn as nn
-from transformers import OPTConfig, OPTModel
+from transformers import GPTNeoXConfig, GPTNeoXModel
 
 from ..base import RewardModel
 
 
-class OPTRM(RewardModel):
+class PolyglotkoRM(RewardModel):
     """
     OPT Reward model.
 
     Args:
         pretrained (str): Pretrained model name or path.
-        config (OPTConfig): Model config.
+        config (GPTNeoXConfig): Model config.
         lora_rank (int): Rank of the low-rank approximation.
         lora_train_bias (str): LoRA bias training mode.
     """
@@ -20,16 +20,16 @@ class OPTRM(RewardModel):
     def __init__(
         self,
         pretrained: Optional[str] = None,
-        config: Optional[OPTConfig] = None,
+        config: Optional[GPTNeoXConfig] = None,
         lora_rank: int = 0,
         lora_train_bias: str = "none",
     ) -> None:
         if pretrained is not None:
-            model = OPTModel.from_pretrained(pretrained)
+            model = GPTNeoXModel.from_pretrained(pretrained)
         elif config is not None:
-            model = OPTModel(config)
+            model = GPTNeoXModel(config)
         else:
-            model = OPTModel(OPTConfig())
+            model = GPTNeoXModel(GPTNeoXConfig())
 
         value_head = nn.Linear(model.config.word_embed_proj_dim, 1)
         value_head.weight.data.normal_(mean=0.0, std=1 / (model.config.word_embed_proj_dim + 1))

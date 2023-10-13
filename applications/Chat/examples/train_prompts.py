@@ -8,12 +8,13 @@ from coati.models.bloom import BLOOMRM, BLOOMActor, BLOOMCritic
 from coati.models.gpt import GPTRM, GPTActor, GPTCritic
 from coati.models.llama import LlamaActor, LlamaCritic, LlamaRM
 from coati.models.opt import OPTRM, OPTActor, OPTCritic
+from coati.models.polyglotko import PolyglotKoActor, PolyglotKoCritic, PolyglotKoRM
 from coati.trainer import PPOTrainer
 from coati.trainer.strategies import DDPStrategy, GeminiStrategy, LowLevelZeroStrategy
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoTokenizer, BloomTokenizerFast, GPT2Tokenizer, LlamaTokenizer
+from transformers import AutoTokenizer, BloomTokenizerFast, GPT2Tokenizer, LlamaTokenizer, GPTNeoXTokenizerFast
 
 from colossalai.nn.optimizer import HybridAdam
 
@@ -43,6 +44,8 @@ def main(args):
             initial_model = OPTActor(pretrained=args.pretrain)
         elif args.model == "llama":
             initial_model = LlamaActor(pretrained=args.pretrain)
+        elif args.model == "polyglotko":
+            initial_model = PolyglotKoActor(pretrained=args.pretrain)
         else:
             raise ValueError(f'Unsupported actor model "{args.model}"')
 
@@ -59,6 +62,8 @@ def main(args):
             reward_model = OPTRM(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
         elif rm_model_name == "llama":
             reward_model = LlamaRM(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
+        elif rm_model_name == "polyglotko":
+            reward_model = PolyglotKoCritic(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
         else:
             raise ValueError(f'Unsupported reward model "{rm_model_name}"')
 
@@ -87,6 +92,8 @@ def main(args):
             critic = OPTCritic(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
         elif rm_model_name == "llama":
             critic = LlamaCritic(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
+        elif rm_model_name == "polyglotko":
+            critic = PolyglotKoCritic(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
         else:
             raise ValueError(f'Unsupported reward model "{rm_model_name}"')
 
@@ -123,6 +130,11 @@ def main(args):
         )
         tokenizer.eos_token = "<\s>"
         tokenizer.pad_token = tokenizer.unk_token
+    elif args.model == "polyglotko":
+        tokenizer = GPTNeoXTokenizerFast.from_pretrained(
+            "EleutherAI/gpt-neox-20b" if args.tokenizer is None else args.tokenizer, add_eos_token=True
+        )
+        tokenizer.pad_token = tokenizer.eos_token
     else:
         raise ValueError(f'Unsupported model "{args.model}"')
     # NOTE: generate() requires padding_side to be "left"
@@ -218,10 +230,10 @@ if __name__ == "__main__":
         default="colossalai_zero2",
         help="strategy to use",
     )
-    parser.add_argument("--model", default="gpt2", choices=["gpt2", "bloom", "opt", "llama"])
+    parser.add_argument("--model", default="gpt2", choices=["gpt2", "bloom", "opt", "llama", "polyglotko""])
     parser.add_argument("--tokenizer", type=str, default=None)
     parser.add_argument("--pretrain", type=str, default=None)
-    parser.add_argument("--rm_model", default=None, choices=["gpt2", "bloom", "opt", "llama"])
+    parser.add_argument("--rm_model", default=None, choices=["gpt2", "bloom", "opt", "llama", "polyglotko""])
     parser.add_argument("--rm_path", type=str, default=None)
     parser.add_argument("--rm_pretrain", type=str, default=None)
     parser.add_argument("--save_path", type=str, default="actor_checkpoint_prompts")

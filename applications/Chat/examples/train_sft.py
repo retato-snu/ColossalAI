@@ -11,13 +11,14 @@ from coati.models.chatglm.chatglm_tokenizer import ChatGLMTokenizer
 from coati.models.gpt import GPTActor
 from coati.models.llama import LlamaActor
 from coati.models.opt import OPTActor
+from coati.models.polyglotko import PolyglotKoActor
 from coati.trainer import SFTTrainer
 from coati.trainer.strategies import DDPStrategy, GeminiStrategy, LowLevelZeroStrategy
 from datasets import load_dataset
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoTokenizer, BloomTokenizerFast, LlamaTokenizer
+from transformers import AutoTokenizer, BloomTokenizerFast, LlamaTokenizer, GPTNeoXTokenizerFast
 from transformers.models.gpt2.tokenization_gpt2 import GPT2Tokenizer
 from transformers.trainer import get_scheduler
 
@@ -53,6 +54,8 @@ def train(args):
             model = LlamaActor(pretrained=args.pretrain, lora_rank=args.lora_rank, checkpoint=args.grad_checkpoint)
         elif args.model == "chatglm":
             model = ChatGLMActor(pretrained=args.pretrain)
+        elif args.model == "polyglotko":
+            model = PolyglotKoActor(pretrained=args.pretrain, lora_rank=args.lora_rank, checkpoint=args.grad_checkpoint)
         else:
             raise ValueError(f'Unsupported model "{args.model}"')
 
@@ -80,6 +83,11 @@ def train(args):
         tokenizer = ChatGLMTokenizer.from_pretrained(
             "THUDM/chatglm-6b" if args.tokenizer is None else args.tokenizer, trust_remote_code=True
         )
+    elif args.model == "polyglotko":
+        tokenizer = GPTNeoXTokenizerFast.from_pretrained(
+            "EleutherAI/gpt-neox-20b" if args.tokenizer is None else args.tokenizer, add_eos_token=True
+        )
+        tokenizer.pad_token = tokenizer.eos_token
     else:
         raise ValueError(f'Unsupported model "{args.model}"')
 
@@ -199,7 +207,7 @@ if __name__ == "__main__":
         choices=["ddp", "colossalai_gemini", "colossalai_zero2", "colossalai_zero2_cpu"],
         default="colossalai_zero2",
     )
-    parser.add_argument("--model", choices=["gpt2", "bloom", "opt", "llama", "chatglm"], default="bloom")
+    parser.add_argument("--model", choices=["gpt2", "bloom", "opt", "llama", "chatglm, polyglotko"], default="bloom")
     parser.add_argument("--tokenizer", type=str, default=None)
     parser.add_argument("--pretrain", type=str, default=None)
     parser.add_argument("--dataset", type=str, default=None)

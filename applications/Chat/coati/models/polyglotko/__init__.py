@@ -1,5 +1,5 @@
-from .polyglotko_actor import polyglotKoActor
-from .polyglotko_critic import OPTCritic
-from .polyglotko_rm import OPTRM
+from .polyglotko_actor import PolyglotKoActor
+from .polyglotko_critic import PolyglotkoCritic
+from .polyglotko_rm import PolyglotkoRM
 
-__all__ = ["polyglotKoActor", "OPTCritic", "OPTRM"]
+__all__ = ["PolyglotKoActor", "PolyglotkoCritic", "PolyglotkoRM"]

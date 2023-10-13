@@ -8,6 +8,7 @@ from coati.models.bloom import BLOOMRM
 from coati.models.gpt import GPTRM
 from coati.models.llama import LlamaRM
 from coati.models.opt import OPTRM
+from coati.modles.polyglotko import PolyglotKoRM
 from coati.trainer import RewardModelTrainer
 from coati.trainer.strategies import DDPStrategy, GeminiStrategy, LowLevelZeroStrategy
 from datasets import load_dataset
@@ -15,7 +16,7 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoTokenizer, BloomTokenizerFast, LlamaTokenizer
+from transformers import AutoTokenizer, BloomTokenizerFast, LlamaTokenizer, GPTNeoXTokenizerFast
 from transformers.models.gpt2.tokenization_gpt2 import GPT2Tokenizer
 
 from colossalai.nn.optimizer import HybridAdam
@@ -42,6 +43,8 @@ def train(args):
             model = GPTRM(pretrained=args.pretrain, lora_rank=args.lora_rank)
         elif args.model == "llama":
             model = LlamaRM(pretrained=args.pretrain, lora_rank=args.lora_rank)
+        elif args.model == "polyglotko":
+            model = PolyglotKoRM(pretrained=args.pretrain, lora_rank=args.lora_rank)
         else:
             raise ValueError(f'Unsupported model "{args.model}"')
 
@@ -69,6 +72,11 @@ def train(args):
         )
         tokenizer.eos_token = "<\s>"
         tokenizer.pad_token = tokenizer.unk_token
+    elif args.model == "polyglotko":
+        tokenizer = GPTNeoXTokenizerFast.from_pretrained(
+            "EleutherAI/gpt-neox-20b" if args.tokenizer is None else args.tokenizer, add_eos_token=True
+        )
+        tokenizer.pad_token = tokenizer.eos_token
     else:
         raise ValueError(f'Unsupported model "{args.model}"')
 
@@ -178,7 +186,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--strategy", choices=["ddp", "colossalai_gemini", "colossalai_zero2"], default="colossalai_zero2"
     )
-    parser.add_argument("--model", choices=["gpt2", "bloom", "opt", "llama"], default="bloom")
+    parser.add_argument("--model", choices=["gpt2", "bloom", "opt", "llama", "polyglotko"], default="bloom")
     parser.add_argument("--tokenizer", type=str, default=None)
     parser.add_argument("--pretrain", type=str, default=None)
     parser.add_argument("--model_path", type=str, default=None)
