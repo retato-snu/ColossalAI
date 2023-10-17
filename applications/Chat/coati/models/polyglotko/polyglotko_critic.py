@@ -33,5 +33,5 @@ class PolyglotkoCritic(Critic):
         else:
             model = GPTNeoXModel(GPTNeoXConfig())
 
-        value_head = nn.Linear(model.config.word_embed_proj_dim, 1)
+        value_head = nn.Linear(model.config.hidden_size, 1)
         super().__init__(model, value_head, lora_rank, lora_train_bias, **kwargs)

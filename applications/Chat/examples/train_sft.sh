@@ -18,11 +18,11 @@ set_n_least_used_CUDA_VISIBLE_DEVICES() {
 set_n_least_used_CUDA_VISIBLE_DEVICES 2
 
 torchrun --standalone --nproc_per_node=2 train_sft.py \
-    --pretrain "/mnt/hf/opt-13b" \
-    --model 'opt' \
+    --pretrain "/mnt/hf/polyglot-ko-12.8b" \
+    --model 'polyglotko' \
     --strategy colossalai_zero2 \
-    --save_path output/opt-13b-sft-lora \
-    --dataset /mnt/ColossalAI/applications/Chat/examples/data/instinwild_en.json \
+    --save_path output/polyglot-ko-12.8b-lora \
+    --dataset /mnt/nlp_explaination/hf-nlp/dataset/ko_alpaca_data.json \
     --batch_size 4 \
     --accumulation_steps 8 \
     --lr 2e-5 \

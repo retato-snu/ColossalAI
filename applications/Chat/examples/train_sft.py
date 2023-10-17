@@ -18,7 +18,7 @@ from datasets import load_dataset
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoTokenizer, BloomTokenizerFast, LlamaTokenizer, GPTNeoXTokenizerFast
+from transformers import AutoTokenizer, BloomTokenizerFast, LlamaTokenizer, PreTrainedTokenizerFast, GPTNeoXTokenizerFast
 from transformers.models.gpt2.tokenization_gpt2 import GPT2Tokenizer
 from transformers.trainer import get_scheduler
 
@@ -84,10 +84,13 @@ def train(args):
             "THUDM/chatglm-6b" if args.tokenizer is None else args.tokenizer, trust_remote_code=True
         )
     elif args.model == "polyglotko":
-        tokenizer = GPTNeoXTokenizerFast.from_pretrained(
-            "EleutherAI/gpt-neox-20b" if args.tokenizer is None else args.tokenizer, add_eos_token=True
+        # tokenizer = AutoTokenizer.from_pretrained("facebook/opt-350m" if args.tokenizer is None else args.tokenizer)
+        # tokenizer.pad_token = tokenizer.eos_token
+        tokenizer = PreTrainedTokenizerFast.from_pretrained(
+            "EleutherAI/polyglot-ko-12.8b" if args.tokenizer is None else args.tokenizer,
+            add_eos_token=True
         )
-        tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.pad_token_id = (0)
     else:
         raise ValueError(f'Unsupported model "{args.model}"')
 
@@ -96,7 +99,6 @@ def train(args):
         optim = HybridAdam(model.parameters(), lr=args.lr, clipping_norm=1.0)
     else:
         optim = Adam(model.parameters(), lr=args.lr)
-
     # configure dataset
     if args.dataset == "yizhongw/self_instruct":
         train_data = load_dataset(args.dataset, "super_natural_instructions", split="train")
@@ -207,7 +209,7 @@ if __name__ == "__main__":
         choices=["ddp", "colossalai_gemini", "colossalai_zero2", "colossalai_zero2_cpu"],
         default="colossalai_zero2",
     )
-    parser.add_argument("--model", choices=["gpt2", "bloom", "opt", "llama", "chatglm, polyglotko"], default="bloom")
+    parser.add_argument("--model", choices=["gpt2", "bloom", "opt", "llama", "chatglm", "polyglotko"], default="bloom")
     parser.add_argument("--tokenizer", type=str, default=None)
     parser.add_argument("--pretrain", type=str, default=None)
     parser.add_argument("--dataset", type=str, default=None)

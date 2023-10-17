@@ -230,10 +230,10 @@ if __name__ == "__main__":
         default="colossalai_zero2",
         help="strategy to use",
     )
-    parser.add_argument("--model", default="gpt2", choices=["gpt2", "bloom", "opt", "llama", "polyglotko""])
+    parser.add_argument("--model", default="gpt2", choices=["gpt2", "bloom", "opt", "llama", "polyglotko"])
     parser.add_argument("--tokenizer", type=str, default=None)
     parser.add_argument("--pretrain", type=str, default=None)
-    parser.add_argument("--rm_model", default=None, choices=["gpt2", "bloom", "opt", "llama", "polyglotko""])
+    parser.add_argument("--rm_model", default=None, choices=["gpt2", "bloom", "opt", "llama", "polyglotko"])
     parser.add_argument("--rm_path", type=str, default=None)
     parser.add_argument("--rm_pretrain", type=str, default=None)
     parser.add_argument("--save_path", type=str, default="actor_checkpoint_prompts")

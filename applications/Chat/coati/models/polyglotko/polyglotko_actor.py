@@ -1,7 +1,10 @@
 from typing import Optional
+import torch
 
-from transformers.models.opt.configuration_opt import GPTNeoXConfig
-from transformers.models.opt.modeling_opt import GPTNeoXForCausalLM
+
+from transformers.models.gpt_neox.configuration_gpt_neox import GPTNeoXConfig
+from transformers.models.gpt_neox.modeling_gpt_neox import GPTNeoXForCausalLM
+
 
 from ..base import Actor
 
@@ -27,7 +30,8 @@ class PolyglotKoActor(Actor):
         lora_train_bias: str = "none",
     ) -> None:
         if pretrained is not None:
-            model = GPTNeoXForCausalLM.from_pretrained(pretrained)
+            model = GPTNeoXForCausalLM.from_pretrained(pretrained, 
+            torch_dtype=torch.float16)
         elif config is not None:
             model = GPTNeoXForCausalLM(config)
         else:
