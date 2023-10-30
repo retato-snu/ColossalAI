@@ -8,7 +8,7 @@ from coati.models.bloom import BLOOMRM
 from coati.models.gpt import GPTRM
 from coati.models.llama import LlamaRM
 from coati.models.opt import OPTRM
-from coati.modles.polyglotko import PolyglotKoRM
+from coati.models.polyglotko import PolyglotkoRM
 from coati.trainer import RewardModelTrainer
 from coati.trainer.strategies import DDPStrategy, GeminiStrategy, LowLevelZeroStrategy
 from datasets import load_dataset
@@ -16,10 +16,11 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoTokenizer, BloomTokenizerFast, LlamaTokenizer, GPTNeoXTokenizerFast
+from transformers import AutoTokenizer, BloomTokenizerFast, LlamaTokenizer, PreTrainedTokenizerFast, GPTNeoXTokenizerFast
 from transformers.models.gpt2.tokenization_gpt2 import GPT2Tokenizer
 
 from colossalai.nn.optimizer import HybridAdam
+from coati.dataset.utils import jload
 
 
 def train(args):
@@ -44,7 +45,7 @@ def train(args):
         elif args.model == "llama":
             model = LlamaRM(pretrained=args.pretrain, lora_rank=args.lora_rank)
         elif args.model == "polyglotko":
-            model = PolyglotKoRM(pretrained=args.pretrain, lora_rank=args.lora_rank)
+            model = PolyglotkoRM(pretrained=args.pretrain, lora_rank=args.lora_rank)
         else:
             raise ValueError(f'Unsupported model "{args.model}"')
 
@@ -73,8 +74,8 @@ def train(args):
         tokenizer.eos_token = "<\s>"
         tokenizer.pad_token = tokenizer.unk_token
     elif args.model == "polyglotko":
-        tokenizer = GPTNeoXTokenizerFast.from_pretrained(
-            "EleutherAI/gpt-neox-20b" if args.tokenizer is None else args.tokenizer, add_eos_token=True
+        tokenizer = PreTrainedTokenizerFast.from_pretrained(
+            "EleutherAI/polyglot-ko-12.8b" if args.tokenizer is None else args.tokenizer, add_eos_token=True
         )
         tokenizer.pad_token = tokenizer.eos_token
     else:
@@ -95,13 +96,37 @@ def train(args):
         raise ValueError(f'Unsupported loss function "{args.loss_fn}"')
 
     # prepare for data and dataset
-    if args.subset is not None:
-        data = load_dataset(args.dataset, data_dir=args.subset)
-    else:
-        data = load_dataset(args.dataset)
-
-    train_data = data["train"].select(range(min(args.max_datasets_size, len(data["train"]))))
-    eval_data = data["test"].select(range(min(args.max_datasets_size, len(data["test"]))))
+    if args.dataset == "json":
+        if args.data_path is None:
+            raise ValueError(f'Need to specify data path for json data')
+        data = jload(args.data_path)
+        if  (integer := len(data[0]['ranking']))  <= 1:
+            raise ValueError(f'Unsupported data size: need more than 2 data, but "{str(integer)}"')
+        entire_data = []    
+        for example in data:
+            for first in range(len(example['ranking']) - 1):
+                for second in range(first + 1, len(example['ranking'])):
+                    each_data = {}
+                    each_data['prompt'] = example['prompt']
+                    if example['ranking'][first] < example['ranking'][second]:
+                        each_data['chosen'] = example['completion_' + str(first)]
+                        each_data['rejected'] = example['completion_' + str(second)]
+                    else:
+                        each_data['chosen'] = example['completion_' + str(second)]
+                        each_data['rejected'] = example['completion_' + str(first)]
+                    entire_data.append(each_data)          
+        
+        
+        train_data = entire_data[:int(len(entire_data) * (15/16))]
+        eval_data = entire_data[int(len(entire_data) * (15/16)):]                              
+    else :        
+        if args.subset is not None:
+            data = load_dataset(args.dataset, data_dir=args.subset)
+        else:
+            data = load_dataset(args.dataset)
+            
+        train_data = data["train"].select(range(min(args.max_datasets_size, len(data["train"]))))
+        eval_data = data["test"].select(range(min(args.max_datasets_size, len(data["test"]))))
 
     if args.dataset == "Dahoas/rm-static":
         train_dataset = RmStaticDataset(train_data, tokenizer, args.max_len)
@@ -110,7 +135,9 @@ def train(args):
         train_dataset = HhRlhfDataset(train_data, tokenizer, args.max_len)
         eval_dataset = HhRlhfDataset(eval_data, tokenizer, args.max_len)
     else:
-        raise ValueError(f'Unsupported dataset "{args.dataset}"')
+        train_dataset = RmStaticDataset(train_data, tokenizer, args.max_len)
+        eval_dataset = RmStaticDataset(eval_data, tokenizer, args.max_len)
+    #     raise ValueError(f'Unsupported dataset "{args.dataset}"')
 
     if dist.is_initialized() and dist.get_world_size() > 1:
         train_sampler = DistributedSampler(
@@ -192,8 +219,10 @@ if __name__ == "__main__":
     parser.add_argument("--model_path", type=str, default=None)
     parser.add_argument("--need_optim_ckpt", type=bool, default=False)
     parser.add_argument(
-        "--dataset", type=str, choices=["Anthropic/hh-rlhf", "Dahoas/rm-static"], default="Dahoas/rm-static"
+        "--dataset", type=str, choices=["Anthropic/hh-rlhf", "Dahoas/rm-static", "json"], default="Dahoas/rm-static"
     )
+    parser.add_argument("--data_path", type=str, default=None)
+    parser.add_argument("--data_bool", type=bool, default=True)
     parser.add_argument("--subset", type=lambda x: None if x == "None" else x, default=None)
     parser.add_argument("--max_datasets_size", type=int, default=1000000)
     parser.add_argument("--save_path", type=str, default="rm_ckpt")

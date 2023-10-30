@@ -117,6 +117,10 @@ def train(args):
             data_path=args.dataset,
             max_datasets_size=args.max_datasets_size,
             max_length=args.max_len,
+            language=args.language,
+            instruction_str=args.instruction_str,
+            input_str=args.input_str,
+            output_str=args.output_str,
         )
         eval_dataset = None
 
@@ -226,5 +230,9 @@ if __name__ == "__main__":
     parser.add_argument("--log_dir", default="logs", type=str)
     parser.add_argument("--use_wandb", default=False, action="store_true")
     parser.add_argument("--grad_checkpoint", default=False, action="store_true")
+    parser.add_argument("--language", choices=["en", "ko"], default="en")
+    parser.add_argument("--instruction_str", type=str, default=None)
+    parser.add_argument("--input_str", type=str, default=None)
+    parser.add_argument("--output_str", type=str, default=None)
     args = parser.parse_args()
     train(args)

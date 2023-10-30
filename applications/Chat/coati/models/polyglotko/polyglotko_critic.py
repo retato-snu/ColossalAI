@@ -7,7 +7,7 @@ from transformers.models.gpt_neox.modeling_gpt_neox import GPTNeoXModel
 from ..base import Critic
 
 
-class PolyglotkoCritic(Critic):
+class PolyglotKoCritic(Critic):
     """
     OPT Critic model.
 

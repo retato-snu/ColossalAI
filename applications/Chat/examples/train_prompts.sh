@@ -20,12 +20,12 @@ set_n_least_used_CUDA_VISIBLE_DEVICES 2
 # torchrun --standalone --nproc_per_node=2 train_prompts.py prompts.csv --strategy colossalai_zero2
 
 torchrun --standalone --nproc_per_node=2 train_prompts.py \
-    --model opt \
-    --pretrain output/opt-6.7b-sft \
-    --pretrain_dataset /mnt/ColossalAI/applications/Chat/examples/data/instinwild_en.json  \
-    --prompt_dataset samples.csv \
+    --model polyglotko \
+    --pretrain output/polyglot-ko-5.8b-lora-koChat_2 \
+    --pretrain_dataset /mnt/ColossalAI/applications/Chat/examples/KoChatGPT/data_kochatgpt/kochatgpt_1_SFT.jsonl  \
+    --prompt_dataset /mnt/ColossalAI/applications/Chat/examples/KoChatGPT/data_kochatgpt/kochatgpt_3_PPO.jsonl \
     --strategy colossalai_zero2 \
-    --num_episodes 5 --num_collect_steps 2 --num_update_steps 1 \
-    --train_batch_size 2 \
-    --save_path output/ppo \
+    --num_episodes 1 --num_collect_steps 2 --num_update_steps 1 \
+    --train_batch_size 4 \
+    --save_path output/ppo_polyglotko-5.8-1.3 \
     --lora_rank 8

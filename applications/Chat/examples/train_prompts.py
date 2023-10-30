@@ -8,7 +8,7 @@ from coati.models.bloom import BLOOMRM, BLOOMActor, BLOOMCritic
 from coati.models.gpt import GPTRM, GPTActor, GPTCritic
 from coati.models.llama import LlamaActor, LlamaCritic, LlamaRM
 from coati.models.opt import OPTRM, OPTActor, OPTCritic
-from coati.models.polyglotko import PolyglotKoActor, PolyglotKoCritic, PolyglotKoRM
+from coati.models.polyglotko import PolyglotKoActor, PolyglotKoCritic, PolyglotkoRM
 from coati.trainer import PPOTrainer
 from coati.trainer.strategies import DDPStrategy, GeminiStrategy, LowLevelZeroStrategy
 from torch.optim import Adam
@@ -155,11 +155,15 @@ def main(args):
     )
 
     pretrain_dataset = SupervisedDataset(
-        tokenizer=tokenizer,
-        data_path=args.pretrain_dataset,
-        max_datasets_size=args.max_datasets_size,
-        max_length=args.max_input_len,
-    )
+            tokenizer=tokenizer,
+            data_path=args.dataset,
+            max_datasets_size=args.max_datasets_size,
+            max_length=args.max_len,
+            language=args.language,
+            instruction_str=args.instruction_str,
+            input_str=args.input_str,
+            output_str=args.output_str,
+        )
     if dist.is_initialized() and dist.get_world_size() > 1:
         pretrain_sampler = DistributedSampler(pretrain_dataset, shuffle=True, seed=42, drop_last=True)
     else:
@@ -253,5 +257,9 @@ if __name__ == "__main__":
     parser.add_argument("--max_seq_len", type=int, default=128)
     parser.add_argument("--log_dir", default="logs", type=str)
     parser.add_argument("--use_wandb", default=False, action="store_true")
+    parser.add_argument("--language", choices=["en", "ko"], default="en")
+    parser.add_argument("--instruction_str", type=str, default=None)
+    parser.add_argument("--input_str", type=str, default=None)
+    parser.add_argument("--output_str", type=str, default=None)
     args = parser.parse_args()
     main(args)

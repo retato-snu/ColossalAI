@@ -29,18 +29,31 @@ logger = get_dist_logger()
 
 IGNORE_INDEX = -100
 PROMPT_DICT = {
-    "prompt_input": (
-        "Below is an instruction that describes a task, paired with an input that provides further context. "
-        "Write a response that appropriately completes the request.\n\n"
-        "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:"
-    ),
-    "prompt_no_input": (
-        "Below is an instruction that describes a task. "
-        "Write a response that appropriately completes the request.\n\n"
-        "### Instruction:\n{instruction}\n\n### Response:"
-    ),
+    "en": {
+        "prompt_input": (
+            "Below is an instruction that describes a task, paired with an input that provides further context. "
+            "Write a response that appropriately completes the request.\n\n"
+            "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:"
+        ),
+        "prompt_no_input": (
+            "Below is an instruction that describes a task. "
+            "Write a response that appropriately completes the request.\n\n"
+            "### Instruction:\n{instruction}\n\n### Response:"
+        ),
+    },
+    "ko"  : {
+        "prompt_input": (
+            "아래는 작업을 설명하는 명령어와 추가적 맥락을 제공하는 입력이 짝을 이루는 예제입니다.\n\n"
+            "요청을 적절히 완료하는 응답을 작성하세요.\n\n"
+            "### 명령어:\n{instruction}\n\n### 입력:\n{input}\n\n### 응답:"
+        ),
+        "prompt_no_input": (
+            "아래는 작업을 설명하는 명령어입니다.\n\n"
+            "명령어에 따른 요청을 적절히 완료하는 응답을 작성하세요.\n\n"
+            "### 명령어:\n{instruction}\n\n### 응답:"
+        ),
+    }
 }
-
 
 def _preprocess(
     sources: Sequence[str],
@@ -159,6 +172,11 @@ class SupervisedDataset(Dataset):
         tokenizer: PreTrainedTokenizer,
         max_datasets_size: Optional[int] = None,
         max_length: int = 512,
+        language: str = "en",
+        instruction_str: Optional[str] = None,
+        input_str: Optional[str] = None,
+        output_str: Optional[str] = None,
+        
     ):
         super().__init__()
         logger.info("Loading data...")
@@ -169,12 +187,21 @@ class SupervisedDataset(Dataset):
             logger.info(f"Limiting dataset to {max_datasets_size} examples.")
             list_data_dict = list_data_dict[:max_datasets_size]
 
+        if instruction_str is not None:
+            for example in list_data_dict:
+                list_data_dict["instruction"] = list_data_dict.pop(instruction_str)
+        if input_str is not None:
+            for example in list_data_dict:
+                list_data_dict["input"] = list_data_dict.pop(input_str)
         logger.info("Formatting inputs...")
-        prompt_input, prompt_no_input = PROMPT_DICT["prompt_input"], PROMPT_DICT["prompt_no_input"]
+        prompt_input, prompt_no_input = PROMPT_DICT[language]["prompt_input"], PROMPT_DICT[language]["prompt_no_input"]
         sources = [
             prompt_input.format_map(example) if "input" in example else prompt_no_input.format_map(example)
             for example in list_data_dict
         ]
+        if output_str is not None:
+            for example in list_data_dict:
+                example["output"] = example.pop(output_str)
         targets = [example["output"] + tokenizer.eos_token for example in list_data_dict]
 
         logger.info("Tokenizing inputs... This may take some time...")
