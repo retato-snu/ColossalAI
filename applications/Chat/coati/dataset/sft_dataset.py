@@ -189,10 +189,10 @@ class SupervisedDataset(Dataset):
 
         if instruction_str is not None:
             for example in list_data_dict:
-                list_data_dict["instruction"] = list_data_dict.pop(instruction_str)
+                example["instruction"] = example.pop(instruction_str)
         if input_str is not None:
             for example in list_data_dict:
-                list_data_dict["input"] = list_data_dict.pop(input_str)
+                example["input"] = example.pop(input_str)
         logger.info("Formatting inputs...")
         prompt_input, prompt_no_input = PROMPT_DICT[language]["prompt_input"], PROMPT_DICT[language]["prompt_no_input"]
         sources = [

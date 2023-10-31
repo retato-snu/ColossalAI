@@ -5,3 +5,9 @@
 [submodule "examples/tutorial/fastfold/FastFold"]
 	path = examples/tutorial/fastfold/FastFold
 	url = https://github.com/hpcaitech/FastFold
+[submodule "applications/Chat/examples/KoChatGPT"]
+	path = applications/Chat/examples/KoChatGPT
+	url = https://github.com/airobotlab/KoChatGPT.git
+[submodule "applications/Chat/transformers"]
+	path = applications/Chat/transformers
+	url = https://github.com/hpcaitech/transformers

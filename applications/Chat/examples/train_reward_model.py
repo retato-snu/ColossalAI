@@ -200,7 +200,7 @@ def train(args):
         LORA_MANAGER.merge_weights = True
         model.eval()
     # save model checkpoint after fitting on only rank0
-    strategy.save_model(model, args.save_path, only_rank0=True)
+    strategy.save_model(model, path=args.save_path, only_rank0=True, tokenizer = tokenizer)
     # save optimizer checkpoint on all ranks
     if args.need_optim_ckpt:
         strategy.save_optimizer(

@@ -19,6 +19,7 @@ class PromptDataset(Dataset):
         tokenizer: transformers.PreTrainedTokenizer,
         max_datasets_size: int = None,
         max_length: int = 96,
+        instruction_str: str = "instruction",
     ):
         super(PromptDataset, self).__init__()
         self.keyed_prompt = defaultdict(list)
@@ -31,7 +32,7 @@ class PromptDataset(Dataset):
             self.logger.info(f"Limiting dataset to {max_datasets_size} examples.")
             list_data_dict = list_data_dict[:max_datasets_size]
 
-        instructions = [data_dict["instruction"] for data_dict in list_data_dict]
+        instructions = [data_dict[instruction_str] for data_dict in list_data_dict]
         tokens = tokenizer(
             instructions, return_tensors="pt", max_length=max_length, padding="max_length", truncation=True
         )

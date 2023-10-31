@@ -14,7 +14,7 @@ from coati.trainer.strategies import DDPStrategy, GeminiStrategy, LowLevelZeroSt
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoTokenizer, BloomTokenizerFast, GPT2Tokenizer, LlamaTokenizer, GPTNeoXTokenizerFast
+from transformers import AutoTokenizer, BloomTokenizerFast, GPT2Tokenizer, LlamaTokenizer, PreTrainedTokenizerFast, GPTNeoXTokenizerFast
 
 from colossalai.nn.optimizer import HybridAdam
 
@@ -81,6 +81,8 @@ def main(args):
             actor = OPTActor(pretrained=args.pretrain, lora_rank=args.lora_rank)
         elif args.model == "llama":
             actor = LlamaActor(pretrained=args.pretrain, lora_rank=args.lora_rank)
+        elif args.model == "polyglotko":
+            actor = PolyglotKoActor(pretrained=args.pretrain, lora_rank=args.lora_rank)
         else:
             raise ValueError(f'Unsupported actor model "{args.model}"')
 
@@ -131,8 +133,9 @@ def main(args):
         tokenizer.eos_token = "<\s>"
         tokenizer.pad_token = tokenizer.unk_token
     elif args.model == "polyglotko":
-        tokenizer = GPTNeoXTokenizerFast.from_pretrained(
-            "EleutherAI/gpt-neox-20b" if args.tokenizer is None else args.tokenizer, add_eos_token=True
+        tokenizer = PreTrainedTokenizerFast.from_pretrained(
+            "EleutherAI/polyglot-ko-12.8b" if args.tokenizer is None else args.tokenizer,
+            add_eos_token=True
         )
         tokenizer.pad_token = tokenizer.eos_token
     else:
@@ -145,6 +148,7 @@ def main(args):
         data_path=args.prompt_dataset,
         max_datasets_size=args.max_datasets_size,
         max_length=args.max_input_len,
+        instruction_str=args.ppo_instruction_str if args.ppo_instruction_str is not None else "instruction",
     )
     if dist.is_initialized() and dist.get_world_size() > 1:
         prompt_sampler = DistributedSampler(prompt_dataset, shuffle=True, seed=42, drop_last=True)
@@ -156,10 +160,10 @@ def main(args):
 
     pretrain_dataset = SupervisedDataset(
             tokenizer=tokenizer,
-            data_path=args.dataset,
+            data_path=args.pretrain_dataset,
             max_datasets_size=args.max_datasets_size,
-            max_length=args.max_len,
-            language=args.language,
+            max_length=args.max_input_len,
+            language=args.language if args.language is not None else "en",
             instruction_str=args.instruction_str,
             input_str=args.input_str,
             output_str=args.output_str,
@@ -215,7 +219,7 @@ def main(args):
         LORA_MANAGER.merge_weights = True
         actor.eval()
     # save model checkpoint after fitting
-    strategy.save_model(actor, args.save_path, only_rank0=True)
+    strategy.save_model(actor, path=args.save_path, only_rank0=True)
     # save optimizer checkpoint on all ranks
     if args.need_optim_ckpt:
         strategy.save_optimizer(
@@ -261,5 +265,6 @@ if __name__ == "__main__":
     parser.add_argument("--instruction_str", type=str, default=None)
     parser.add_argument("--input_str", type=str, default=None)
     parser.add_argument("--output_str", type=str, default=None)
+    parser.add_argument("--ppo_instruction_str", type=str, default=None)
     args = parser.parse_args()
     main(args)

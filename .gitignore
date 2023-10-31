@@ -159,3 +159,9 @@ coverage.xml
 # ignore testmon and coverage files
 .coverage
 .testmondata*
+
+# ignore output files
+output/
+
+# ignore logs
+logs/
