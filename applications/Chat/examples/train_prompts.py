@@ -9,12 +9,20 @@ from coati.models.gpt import GPTRM, GPTActor, GPTCritic
 from coati.models.llama import LlamaActor, LlamaCritic, LlamaRM
 from coati.models.opt import OPTRM, OPTActor, OPTCritic
 from coati.models.polyglotko import PolyglotKoActor, PolyglotKoCritic, PolyglotkoRM
+from coati.models.gptNeoX import GptNeoXActor, GptNeoXCritic, GptNeoXRM
 from coati.trainer import PPOTrainer
 from coati.trainer.strategies import DDPStrategy, GeminiStrategy, LowLevelZeroStrategy
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoTokenizer, BloomTokenizerFast, GPT2Tokenizer, LlamaTokenizer, PreTrainedTokenizerFast, GPTNeoXTokenizerFast
+from transformers import (
+    AutoTokenizer,
+    BloomTokenizerFast,
+    GPT2Tokenizer,
+    LlamaTokenizer,
+    PreTrainedTokenizerFast,
+    GPTNeoXTokenizerFast,
+)
 
 from colossalai.nn.optimizer import HybridAdam
 
@@ -46,6 +54,8 @@ def main(args):
             initial_model = LlamaActor(pretrained=args.pretrain)
         elif args.model == "polyglotko":
             initial_model = PolyglotKoActor(pretrained=args.pretrain)
+        elif args.model == "gpt-neox":
+            initial_model = GptNeoXActor(pretrained=args.pretrain)
         else:
             raise ValueError(f'Unsupported actor model "{args.model}"')
 
@@ -57,13 +67,23 @@ def main(args):
         if rm_model_name == "gpt2":
             reward_model = GPTRM(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
         elif rm_model_name == "bloom":
-            reward_model = BLOOMRM(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
+            reward_model = BLOOMRM(
+                pretrained=args.rm_pretrain, lora_rank=args.lora_rank
+            )
         elif rm_model_name == "opt":
             reward_model = OPTRM(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
         elif rm_model_name == "llama":
-            reward_model = LlamaRM(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
+            reward_model = LlamaRM(
+                pretrained=args.rm_pretrain, lora_rank=args.lora_rank
+            )
         elif rm_model_name == "polyglotko":
-            reward_model = PolyglotKoCritic(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
+            reward_model = PolyglotkoRM(
+                pretrained=args.rm_pretrain, lora_rank=args.lora_rank
+            )
+        elif rm_model_name == "gpt-neox":
+            reward_model = GptNeoXRM(
+                pretrained=args.rm_pretrain, lora_rank=args.lora_rank
+            )
         else:
             raise ValueError(f'Unsupported reward model "{rm_model_name}"')
 
@@ -83,6 +103,8 @@ def main(args):
             actor = LlamaActor(pretrained=args.pretrain, lora_rank=args.lora_rank)
         elif args.model == "polyglotko":
             actor = PolyglotKoActor(pretrained=args.pretrain, lora_rank=args.lora_rank)
+        elif args.model == "gpt-neox":
+            actor = GptNeoXActor(pretrained=args.pretrain, lora_rank=args.lora_rank)
         else:
             raise ValueError(f'Unsupported actor model "{args.model}"')
 
@@ -95,7 +117,13 @@ def main(args):
         elif rm_model_name == "llama":
             critic = LlamaCritic(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
         elif rm_model_name == "polyglotko":
-            critic = PolyglotKoCritic(pretrained=args.rm_pretrain, lora_rank=args.lora_rank)
+            critic = PolyglotKoCritic(
+                pretrained=args.rm_pretrain, lora_rank=args.lora_rank
+            )
+        elif rm_model_name == "gpt-neox":
+            critic = GptNeoXCritic(
+                pretrained=args.rm_pretrain, lora_rank=args.lora_rank
+            )
         else:
             raise ValueError(f'Unsupported reward model "{rm_model_name}"')
 
@@ -116,7 +144,9 @@ def main(args):
 
     # configure tokenizer
     if args.model == "gpt2":
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2" if args.tokenizer is None else args.tokenizer)
+        tokenizer = GPT2Tokenizer.from_pretrained(
+            "gpt2" if args.tokenizer is None else args.tokenizer
+        )
         tokenizer.pad_token = tokenizer.eos_token
     elif args.model == "bloom":
         tokenizer = BloomTokenizerFast.from_pretrained(
@@ -124,18 +154,29 @@ def main(args):
         )
         tokenizer.pad_token = tokenizer.eos_token
     elif args.model == "opt":
-        tokenizer = AutoTokenizer.from_pretrained("facebook/opt-350m" if args.tokenizer is None else args.tokenizer)
+        tokenizer = AutoTokenizer.from_pretrained(
+            "facebook/opt-350m" if args.tokenizer is None else args.tokenizer
+        )
         tokenizer.pad_token = tokenizer.eos_token
     elif args.model == "llama":
         tokenizer = LlamaTokenizer.from_pretrained(
-            "hf-internal-testing/llama-tokenizer" if args.tokenizer is None else args.tokenizer
+            "hf-internal-testing/llama-tokenizer"
+            if args.tokenizer is None
+            else args.tokenizer
         )
         tokenizer.eos_token = "<\s>"
         tokenizer.pad_token = tokenizer.unk_token
     elif args.model == "polyglotko":
         tokenizer = PreTrainedTokenizerFast.from_pretrained(
-            "EleutherAI/polyglot-ko-12.8b" if args.tokenizer is None else args.tokenizer,
-            add_eos_token=True
+            "EleutherAI/polyglot-ko-12.8b"
+            if args.tokenizer is None
+            else args.tokenizer,
+            add_eos_token=True,
+        )
+        tokenizer.pad_token = tokenizer.eos_token
+    elif args.model == "gpt-neox":
+        tokenizer = GPTNeoXTokenizerFast.from_pretrained(
+            args.pretrain if args.tokenizer is None else args.tokenizer,
         )
         tokenizer.pad_token = tokenizer.eos_token
     else:
@@ -148,36 +189,53 @@ def main(args):
         data_path=args.prompt_dataset,
         max_datasets_size=args.max_datasets_size,
         max_length=args.max_input_len,
-        instruction_str=args.ppo_instruction_str if args.ppo_instruction_str is not None else "instruction",
+        instruction_str=args.ppo_instruction_str
+        if args.ppo_instruction_str is not None
+        else "instruction",
     )
     if dist.is_initialized() and dist.get_world_size() > 1:
-        prompt_sampler = DistributedSampler(prompt_dataset, shuffle=True, seed=42, drop_last=True)
+        prompt_sampler = DistributedSampler(
+            prompt_dataset, shuffle=True, seed=42, drop_last=True
+        )
     else:
         prompt_sampler = None
     prompt_dataloader = DataLoader(
-        prompt_dataset, shuffle=(prompt_sampler is None), sampler=prompt_sampler, batch_size=args.experience_batch_size
+        prompt_dataset,
+        shuffle=(prompt_sampler is None),
+        sampler=prompt_sampler,
+        batch_size=args.experience_batch_size,
     )
 
     pretrain_dataset = SupervisedDataset(
-            tokenizer=tokenizer,
-            data_path=args.pretrain_dataset,
-            max_datasets_size=args.max_datasets_size,
-            max_length=args.max_input_len,
-            language=args.language if args.language is not None else "en",
-            instruction_str=args.instruction_str,
-            input_str=args.input_str,
-            output_str=args.output_str,
-        )
+        tokenizer=tokenizer,
+        data_path=args.pretrain_dataset,
+        max_datasets_size=args.max_datasets_size,
+        max_length=args.max_input_len,
+        language=args.language if args.language is not None else "en",
+        instruction_str=args.instruction_str,
+        input_str=args.input_str,
+        output_str=args.output_str,
+    )
     if dist.is_initialized() and dist.get_world_size() > 1:
-        pretrain_sampler = DistributedSampler(pretrain_dataset, shuffle=True, seed=42, drop_last=True)
+        pretrain_sampler = DistributedSampler(
+            pretrain_dataset, shuffle=True, seed=42, drop_last=True
+        )
     else:
         pretrain_sampler = None
     pretrain_dataloader = DataLoader(
-        pretrain_dataset, shuffle=(pretrain_sampler is None), sampler=pretrain_sampler, batch_size=args.ptx_batch_size
+        pretrain_dataset,
+        shuffle=(pretrain_sampler is None),
+        sampler=pretrain_sampler,
+        batch_size=args.ptx_batch_size,
     )
 
     # NOTE: For small models like opt-1.3b, reward model and initial model are not required to be parallelized.
-    (actor, actor_optim), (critic, critic_optim), reward_model, initial_model = strategy.prepare(
+    (
+        (actor, actor_optim),
+        (critic, critic_optim),
+        reward_model,
+        initial_model,
+    ) = strategy.prepare(
         (actor, actor_optim), (critic, critic_optim), reward_model, initial_model
     )
 
@@ -223,14 +281,23 @@ def main(args):
     # save optimizer checkpoint on all ranks
     if args.need_optim_ckpt:
         strategy.save_optimizer(
-            actor_optim, "actor_optim_checkpoint_prompts_%d.pt" % (torch.cuda.current_device()), only_rank0=False
+            actor_optim,
+            "actor_optim_checkpoint_prompts_%d.pt" % (torch.cuda.current_device()),
+            only_rank0=False,
         )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--prompt_dataset", type=str, default=None, help="path to the prompt dataset")
-    parser.add_argument("--pretrain_dataset", type=str, default=None, help="path to the pretrained dataset")
+    parser.add_argument(
+        "--prompt_dataset", type=str, default=None, help="path to the prompt dataset"
+    )
+    parser.add_argument(
+        "--pretrain_dataset",
+        type=str,
+        default=None,
+        help="path to the pretrained dataset",
+    )
     parser.add_argument("--max_datasets_size", type=int, default=50000)
     parser.add_argument(
         "--strategy",
@@ -238,10 +305,18 @@ if __name__ == "__main__":
         default="colossalai_zero2",
         help="strategy to use",
     )
-    parser.add_argument("--model", default="gpt2", choices=["gpt2", "bloom", "opt", "llama", "polyglotko"])
+    parser.add_argument(
+        "--model",
+        default="gpt2",
+        choices=["gpt2", "bloom", "opt", "llama", "polyglotko", "gpt-neox"],
+    )
     parser.add_argument("--tokenizer", type=str, default=None)
     parser.add_argument("--pretrain", type=str, default=None)
-    parser.add_argument("--rm_model", default=None, choices=["gpt2", "bloom", "opt", "llama", "polyglotko"])
+    parser.add_argument(
+        "--rm_model",
+        default=None,
+        choices=["gpt2", "bloom", "opt", "llama", "polyglotko", "gpt-neox"],
+    )
     parser.add_argument("--rm_path", type=str, default=None)
     parser.add_argument("--rm_pretrain", type=str, default=None)
     parser.add_argument("--save_path", type=str, default="actor_checkpoint_prompts")
@@ -252,7 +327,9 @@ if __name__ == "__main__":
     parser.add_argument("--train_batch_size", type=int, default=8)
     parser.add_argument("--ptx_batch_size", type=int, default=1)
     parser.add_argument("--experience_batch_size", type=int, default=8)
-    parser.add_argument("--lora_rank", type=int, default=0, help="low-rank adaptation matrices rank")
+    parser.add_argument(
+        "--lora_rank", type=int, default=0, help="low-rank adaptation matrices rank"
+    )
     parser.add_argument("--merge_lora_weights", type=bool, default=True)
     parser.add_argument("--lr", type=float, default=1e-7)
     parser.add_argument("--kl_coef", type=float, default=0.1)

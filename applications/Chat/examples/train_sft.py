@@ -18,7 +18,13 @@ from datasets import load_dataset
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoTokenizer, BloomTokenizerFast, LlamaTokenizer, PreTrainedTokenizerFast, GPTNeoXTokenizerFast
+from transformers import (
+    AutoTokenizer,
+    BloomTokenizerFast,
+    LlamaTokenizer,
+    PreTrainedTokenizerFast,
+    GPTNeoXTokenizerFast,
+)
 from transformers.models.gpt2.tokenization_gpt2 import GPT2Tokenizer
 from transformers.trainer import get_scheduler
 
@@ -45,17 +51,37 @@ def train(args):
         args.grad_checkpoint = False
     with strategy.model_init_context():
         if args.model == "bloom":
-            model = BLOOMActor(pretrained=args.pretrain, lora_rank=args.lora_rank, checkpoint=args.grad_checkpoint)
+            model = BLOOMActor(
+                pretrained=args.pretrain,
+                lora_rank=args.lora_rank,
+                checkpoint=args.grad_checkpoint,
+            )
         elif args.model == "opt":
-            model = OPTActor(pretrained=args.pretrain, lora_rank=args.lora_rank, checkpoint=args.grad_checkpoint)
+            model = OPTActor(
+                pretrained=args.pretrain,
+                lora_rank=args.lora_rank,
+                checkpoint=args.grad_checkpoint,
+            )
         elif args.model == "gpt2":
-            model = GPTActor(pretrained=args.pretrain, lora_rank=args.lora_rank, checkpoint=args.grad_checkpoint)
+            model = GPTActor(
+                pretrained=args.pretrain,
+                lora_rank=args.lora_rank,
+                checkpoint=args.grad_checkpoint,
+            )
         elif args.model == "llama":
-            model = LlamaActor(pretrained=args.pretrain, lora_rank=args.lora_rank, checkpoint=args.grad_checkpoint)
+            model = LlamaActor(
+                pretrained=args.pretrain,
+                lora_rank=args.lora_rank,
+                checkpoint=args.grad_checkpoint,
+            )
         elif args.model == "chatglm":
             model = ChatGLMActor(pretrained=args.pretrain)
         elif args.model == "polyglotko":
-            model = PolyglotKoActor(pretrained=args.pretrain, lora_rank=args.lora_rank, checkpoint=args.grad_checkpoint)
+            model = PolyglotKoActor(
+                pretrained=args.pretrain,
+                lora_rank=args.lora_rank,
+                checkpoint=args.grad_checkpoint,
+            )
         else:
             raise ValueError(f'Unsupported model "{args.model}"')
 
@@ -63,7 +89,9 @@ def train(args):
 
     # configure tokenizer
     if args.model == "gpt2":
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2" if args.tokenizer is None else args.tokenizer)
+        tokenizer = GPT2Tokenizer.from_pretrained(
+            "gpt2" if args.tokenizer is None else args.tokenizer
+        )
         tokenizer.pad_token = tokenizer.eos_token
     elif args.model == "bloom":
         tokenizer = BloomTokenizerFast.from_pretrained(
@@ -71,26 +99,33 @@ def train(args):
         )
         tokenizer.pad_token = tokenizer.eos_token
     elif args.model == "opt":
-        tokenizer = AutoTokenizer.from_pretrained("facebook/opt-350m" if args.tokenizer is None else args.tokenizer)
+        tokenizer = AutoTokenizer.from_pretrained(
+            "facebook/opt-350m" if args.tokenizer is None else args.tokenizer
+        )
         tokenizer.pad_token = tokenizer.eos_token
     elif args.model == "llama":
         tokenizer = LlamaTokenizer.from_pretrained(
-            "hf-internal-testing/llama-tokenizer" if args.tokenizer is None else args.tokenizer
+            "hf-internal-testing/llama-tokenizer"
+            if args.tokenizer is None
+            else args.tokenizer
         )
         tokenizer.eos_token = "<\s>"
         tokenizer.pad_token = tokenizer.unk_token
     elif args.model == "chatglm":
         tokenizer = ChatGLMTokenizer.from_pretrained(
-            "THUDM/chatglm-6b" if args.tokenizer is None else args.tokenizer, trust_remote_code=True
+            "THUDM/chatglm-6b" if args.tokenizer is None else args.tokenizer,
+            trust_remote_code=True,
         )
     elif args.model == "polyglotko":
         # tokenizer = AutoTokenizer.from_pretrained("facebook/opt-350m" if args.tokenizer is None else args.tokenizer)
         # tokenizer.pad_token = tokenizer.eos_token
         tokenizer = PreTrainedTokenizerFast.from_pretrained(
-            "EleutherAI/polyglot-ko-12.8b" if args.tokenizer is None else args.tokenizer,
-            add_eos_token=True
+            "EleutherAI/polyglot-ko-12.8b"
+            if args.tokenizer is None
+            else args.tokenizer,
+            add_eos_token=True,
         )
-        tokenizer.pad_token_id = (0)
+        tokenizer.pad_token_id = 0
     else:
         raise ValueError(f'Unsupported model "{args.model}"')
 
@@ -101,12 +136,20 @@ def train(args):
         optim = Adam(model.parameters(), lr=args.lr)
     # configure dataset
     if args.dataset == "yizhongw/self_instruct":
-        train_data = load_dataset(args.dataset, "super_natural_instructions", split="train")
-        eval_data = load_dataset(args.dataset, "super_natural_instructions", split="test")
+        train_data = load_dataset(
+            args.dataset, "super_natural_instructions", split="train"
+        )
+        eval_data = load_dataset(
+            args.dataset, "super_natural_instructions", split="test"
+        )
 
         if args.max_datasets_size is not None:
-            train_data = train_data.select(range(min(args.max_datasets_size, len(train_data))))
-            eval_data = eval_data.select(range(min(args.max_datasets_size, len(eval_data))))
+            train_data = train_data.select(
+                range(min(args.max_datasets_size, len(train_data)))
+            )
+            eval_data = eval_data.select(
+                range(min(args.max_datasets_size, len(eval_data)))
+            )
 
         train_dataset = SFTDataset(train_data, tokenizer, args.max_len)
         eval_dataset = SFTDataset(eval_data, tokenizer, args.max_len)
@@ -167,9 +210,14 @@ def train(args):
     num_update_steps_per_epoch = len(train_dataloader) // args.accumulation_steps
     max_steps = math.ceil(args.max_epochs * num_update_steps_per_epoch)
     lr_scheduler = get_scheduler(
-        "cosine", optim, num_warmup_steps=math.ceil(max_steps * 0.03), num_training_steps=max_steps
+        "cosine",
+        optim,
+        num_warmup_steps=math.ceil(max_steps * 0.03),
+        num_training_steps=max_steps,
     )
-    strategy_dict = strategy.prepare(dict(model=model, optimizer=optim, lr_scheduler=lr_scheduler))
+    strategy_dict = strategy.prepare(
+        dict(model=model, optimizer=optim, lr_scheduler=lr_scheduler)
+    )
     model = strategy_dict["model"]
     optim = strategy_dict["optimizer"]
     lr_scheduler = strategy_dict["lr_scheduler"]
@@ -198,11 +246,15 @@ def train(args):
         LORA_MANAGER.merge_weights = True
         model.eval()
     # save model checkpoint after fitting on only rank0
-    strategy.save_pretrained(model, path=args.save_path, only_rank0=True, tokenizer=tokenizer)
+    strategy.save_pretrained(
+        model, path=args.save_path, only_rank0=True, tokenizer=tokenizer
+    )
     # save optimizer checkpoint on all ranks
     if args.need_optim_ckpt:
         strategy.save_optimizer(
-            trainer.optimizer, "rm_optim_checkpoint_%d.pt" % (torch.cuda.current_device()), only_rank0=False
+            trainer.optimizer,
+            "rm_optim_checkpoint_%d.pt" % (torch.cuda.current_device()),
+            only_rank0=False,
         )
 
 
@@ -210,10 +262,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--strategy",
-        choices=["ddp", "colossalai_gemini", "colossalai_zero2", "colossalai_zero2_cpu"],
+        choices=[
+            "ddp",
+            "colossalai_gemini",
+            "colossalai_zero2",
+            "colossalai_zero2_cpu",
+        ],
         default="colossalai_zero2",
     )
-    parser.add_argument("--model", choices=["gpt2", "bloom", "opt", "llama", "chatglm", "polyglotko"], default="bloom")
+    parser.add_argument(
+        "--model",
+        choices=["gpt2", "bloom", "opt", "llama", "chatglm", "polyglotko"],
+        default="bloom",
+    )
     parser.add_argument("--tokenizer", type=str, default=None)
     parser.add_argument("--pretrain", type=str, default=None)
     parser.add_argument("--dataset", type=str, default=None)
@@ -223,7 +284,9 @@ if __name__ == "__main__":
     parser.add_argument("--max_epochs", type=int, default=3)
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--max_len", type=int, default=512)
-    parser.add_argument("--lora_rank", type=int, default=0, help="low-rank adaptation matrices rank")
+    parser.add_argument(
+        "--lora_rank", type=int, default=0, help="low-rank adaptation matrices rank"
+    )
     parser.add_argument("--merge_lora_weights", type=bool, default=True)
     parser.add_argument("--lr", type=float, default=5e-6)
     parser.add_argument("--accumulation_steps", type=int, default=8)

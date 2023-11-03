@@ -18,18 +18,18 @@ set_n_least_used_CUDA_VISIBLE_DEVICES() {
 set_n_least_used_CUDA_VISIBLE_DEVICES 2
 
 torchrun --standalone --nproc_per_node=2 train_sft.py \
-    --pretrain "/mnt/hf/polyglot-ko-12.8b" \
+    --pretrain "/mnt/hf/polyglot-ko-5.8b" \
     --model 'polyglotko' \
     --strategy colossalai_zero2 \
-    --save_path output/polyglot-ko-12.8b-lora-koChat \
+    --save_path output/polyglot-ko-5.8b-nolora-koChat \
     --dataset /mnt/ColossalAI/applications/Chat/examples/KoChatGPT/data_kochatgpt/kochatgpt_1_SFT.jsonl \
-    --batch_size 1 \
+    --batch_size 8 \
     --accumulation_steps 8 \
     --lr 2e-5 \
     --max_epochs 5 \
     --lora_rank 8 \
     --language 'ko' \
-    --instruction_str "prompt"\
+    --instruction_str "prompt" \
     --output_str "completion" 
     # --max_datasets_size 512 
     # --dataset /mnt/nlp_explaination/hf-nlp/dataset/ko_alpaca_data.json \
